@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateAnalysis > 正常なJSON応答を正しくパースする(Snapshot) 1`] = `
+{
+  "actions": [
+    "アウターの在庫確保を強化してください。",
+    "リピート率改善施策を実施してください。",
+  ],
+  "summary": "3ヶ月累計売上は560,600円、粗利率62.3%と高水準を維持しています。",
+}
+`;
