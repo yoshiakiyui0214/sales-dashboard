@@ -28,11 +28,11 @@ export function AiAnalysis() {
   return (
     <div className="bg-white border border-zinc-200 rounded-lg p-6 mt-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-[#1A2E5C]">AI分析コメント</h2>
+        <h2 className="text-lg font-bold text-brand-navy">AI分析コメント</h2>
         <button
           onClick={handleAnalyze}
           disabled={isPending}
-          className="bg-[#1A2E5C] text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
+          className="bg-brand-navy text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
         >
           {isPending ? "分析中..." : "AI分析を実行"}
         </button>

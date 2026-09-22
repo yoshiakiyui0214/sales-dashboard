@@ -24,7 +24,7 @@ export function RevenueChart({ data }: { data: MonthlyKpi[] }) {
         <Line
           type="monotone"
           dataKey="revenue"
-          stroke="#1A2E5C"
+          stroke="var(--color-brand-navy)"
           strokeWidth={2}
           name="売上"
         />
