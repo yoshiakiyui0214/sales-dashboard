@@ -24,16 +24,31 @@ const sampleKpiSummary: KpiSummary = {
   grossProfitMargin: 62.3,
   repeatRate: 28.6,
   monthlyData: [
-    { month: "2025-11", revenue: 264700, grossProfit: 165000, orderCount: 18 },
+    {
+      month: "2025-11",
+      revenue: 264700,
+      grossProfit: 165000,
+      grossProfitMargin: 62.3,
+      orderCount: 18,
+      customerCount: 16,
+      repeatCustomerCount: 6,
+      repeatRate: 37.5,
+    },
   ],
   latestMonth: {
     month: "2025-11",
     revenue: 264700,
     grossProfit: 165000,
+    grossProfitMargin: 62.3,
     orderCount: 18,
+    customerCount: 16,
+    repeatCustomerCount: 6,
+    repeatRate: 37.5,
   },
   previousMonth: null,
   revenueMomChange: null,
+  grossProfitMomChange: null,
+  repeatRateMomDiff: null,
   categoryRanking: [{ category: "アウター", revenue: 287400 }],
   skuRanking: [
     {

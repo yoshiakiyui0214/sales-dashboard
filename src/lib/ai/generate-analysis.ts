@@ -33,6 +33,42 @@ export function isValidAnalysisResult(
 }
 
 /**
+ * KPIサマリーをAIに渡すメッセージを組み立てる。
+ * 「単月の数字」と「期間全体の数字」が混ざらないよう、各項目の意味を明記する。
+ */
+export function buildAnalysisUserMessage(kpiSummary: KpiSummary): string {
+  const months = kpiSummary.monthlyData.map((m) => m.month);
+  const firstMonth = months[0] ?? "不明";
+  const latestMonth = kpiSummary.latestMonth?.month ?? "不明";
+  const previousMonth = kpiSummary.previousMonth?.month ?? "なし";
+
+  return [
+    "以下はアパレルECの売上KPIサマリー(JSON)です。",
+    "",
+    "## 期間の前提",
+    `- データ期間: ${firstMonth} 〜 ${latestMonth}`,
+    `- 分析の対象月(最新月): ${latestMonth}`,
+    `- 比較対象の前月: ${previousMonth}`,
+    "",
+    "## 各項目の意味",
+    "- latestMonth / previousMonth: 最新月と前月の単月の数字",
+    "- revenueMomChange / grossProfitMomChange: 最新月の前月比(%)",
+    "- repeatRateMomDiff: 最新月のリピート率の前月差(ポイント)",
+    "- 月次リピート率: その月に購入した顧客のうち、その月末までに累計2回以上購入している顧客の割合",
+    "- totalRevenue / totalGrossProfit / grossProfitMargin / repeatRate: データ期間全体の累計・平均",
+    "- monthlyData: 月ごとの推移",
+    "- categoryRanking / skuRanking: データ期間全体の集計",
+    "",
+    "## 注意",
+    "- 「今月」と書くときは最新月の単月の数字を使い、期間全体の累計と混同しないこと",
+    "- 期間全体の数字に触れるときは「期間累計」「期間全体」と明記すること",
+    "",
+    "## KPIサマリー",
+    JSON.stringify(kpiSummary, null, 2),
+  ].join("\n");
+}
+
+/**
  * KPIサマリーをもとにClaude APIへ分析を依頼し、
  * パース・バリデーション済みの結果を返す。
  */
@@ -50,7 +86,7 @@ export async function generateAnalysis(
       messages: [
         {
           role: "user",
-          content: `今月の売上KPIサマリー:\n${JSON.stringify(kpiSummary, null, 2)}`,
+          content: buildAnalysisUserMessage(kpiSummary),
         },
       ],
     });
