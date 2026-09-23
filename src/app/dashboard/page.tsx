@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { calculateKpi, type SalesRecord } from "@/lib/analytics/kpi";
+import { calculateKpi } from "@/lib/analytics/kpi";
+import { fetchAllSalesData } from "@/lib/analytics/fetch-sales-data";
 import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { AiAnalysis } from "@/components/dashboard/ai-analysis";
 
@@ -65,26 +65,16 @@ function KpiCard({
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const { data, error, count } = await supabase
-    .from("sales_data")
-    .select(
-      "order_date, customer_id, product_name, category, sku, quantity, revenue, cost",
-      { count: "exact" }
-    );
+  const { records, totalCount, error } = await fetchAllSalesData();
 
   if (error) {
     return (
       <main className="min-h-screen bg-brand-light p-8">
-        <p className="text-red-600">
-          データの取得に失敗しました: {error.message}
-        </p>
+        <p className="text-red-600">データの取得に失敗しました: {error}</p>
       </main>
     );
   }
 
-  const records = (data ?? []) as SalesRecord[];
   const kpi = calculateKpi(records);
   const latest = kpi.latestMonth;
   const previous = kpi.previousMonth;
@@ -107,7 +97,7 @@ export default async function DashboardPage() {
   }
 
   // 取得できた件数がDB上の件数より少ない = 集計が欠けている
-  const isTruncated = count !== null && count > records.length;
+  const isTruncated = totalCount !== null && totalCount > records.length;
 
   const firstMonth = kpi.monthlyData[0].month;
   const periodLabel =
@@ -118,9 +108,14 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-brand-light p-8">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-brand-navy mb-2">
-          売上分析ダッシュボード
-        </h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-2xl font-bold text-brand-navy">
+            売上分析ダッシュボード
+          </h1>
+          <a href="/upload" className="text-sm text-brand-navy underline">
+            CSVアップロード
+          </a>
+        </div>
         <p className="text-sm text-zinc-600 mb-6">
           対象月:
           <span className="font-semibold text-brand-navy">
@@ -129,11 +124,13 @@ export default async function DashboardPage() {
           {previous && `（${formatMonth(previous.month)}との比較）`}
           <span className="mx-2">|</span>
           データ期間:{periodLabel}
+          <span className="mx-2">|</span>
+          集計件数:{records.length.toLocaleString()}件
         </p>
 
         {isTruncated && (
           <div className="bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg p-4 mb-6">
-            データ件数が多いため、全{count?.toLocaleString()}件中
+            全{totalCount?.toLocaleString()}件中
             {records.length.toLocaleString()}
             件しか集計できていません。表示中の数字は正確ではありません。管理者に連絡してください。
           </div>
