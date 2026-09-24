@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+# Excel(数値突合の作業ファイルなど)
+*.xlsx
+~$*
