@@ -1,36 +1,215 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 売上分析ダッシュボード
 
-## Getting Started
+アパレルEC(LUMINA様)向けの、AI搭載売上分析ダッシュボードです。
+Shopifyから出力した売上CSVをアップロードするだけで、3大KPI(売上・粗利・リピート率)の確認、月次推移・カテゴリ別・SKU別の分析、AIによる分析コメントとアクション提案までを自動で行います。
 
-First, run the development server:
+- **本番URL**:https://sales-dashboard-my-team051.vercel.app
+- **リポジトリ**:https://github.com/yoshiakiyui0214/sales-dashboard
+
+| 画面 | URL | 内容 |
+|---|---|---|
+| ダッシュボード | `/dashboard` | KPIカード・月次推移グラフ・カテゴリ別売上・SKUトップ10・AI分析 |
+| CSVアップロード | `/upload` | 売上CSVの取り込み・無効行レポート |
+
+---
+
+## 1. 運用マニュアル(月次の操作手順)
+
+### 毎月の流れ
+
+1. Shopifyから**当月1日〜月末まで**の売上CSVをダウンロードする
+2. ダッシュボード右上の「**CSVアップロード**」を開く
+3. CSVファイルをドラッグ&ドロップ(または「ファイルを選択」)
+4. 結果を確認する
+   - 「全◯行中、◯行成功」と表示される
+   - 「✓ ◯年◯月のデータを取り込みました」と表示される
+   - スキップされた行があれば、行番号と理由が一覧で表示される
+5. 「**ダッシュボードを見る**」を押し、画面上部の「対象月」「集計件数」を確認する
+6. 画面下部の「**AI分析を実行**」を押し、分析コメントを確認する
+7. 必要に応じてスクリーンショットを社内報告に使う
+
+### 再アップロードのルール
+
+- CSVに含まれる月のデータがすでに登録されている場合、**その月のデータは新しいCSVの内容で丸ごと置き換わります**(二重に計上されることはありません)
+- 月の途中で一度アップロードし、月末に最新のCSVを入れ直す運用も可能です
+- ⚠️ **月の途中から始まるCSV(例:11月15日〜30日だけ)をアップロードすると、11月1日〜14日の登録済みデータも消えます。** 必ず「月の1日から」のデータを含むCSVを使ってください
+
+### 困ったとき
+
+| 症状 | 考えられる原因と対処 |
+|---|---|
+| 全行がスキップされた | カラム名が違う可能性があります。「2. CSVフォーマット仕様」の必須カラムと見比べてください |
+| 一部の行がスキップされた | 画面に表示される行番号と理由を確認し、CSVを修正して再アップロードしてください(同じ月は置き換わるので二重計上になりません) |
+| 商品名やカテゴリが文字化けした | CSVの文字コードがUTF-8ではありません。Excelで保存する場合は「**CSV UTF-8(コンマ区切り)**」を選んでください |
+| 金額の行がスキップされた | 金額にカンマや「¥」「円」が入っていないか確認してください(数字のみ) |
+| 「売上が二重に計上されている可能性があります」と表示された | データの置き換えに失敗しています。これ以上アップロードせず、管理者に連絡してください |
+| ダッシュボードに赤い警告「◯件しか集計できていません」が出た | データの取得が途中で止まっています。表示中の数字は正しくないため、管理者に連絡してください |
+| AIコメントが表示されない | AIサービスの一時的な障害の可能性があります。時間をおいて再度「AI分析を実行」を押してください |
+
+---
+
+## 2. CSVフォーマット仕様
+
+### カラム一覧
+
+| カラム名 | 必須 | 内容 | 例 |
+|---|---|---|---|
+| `order_date` | ◯ | 注文日 | `2025-11-03` |
+| `customer_id` | ◯ | 顧客ID | `C001` |
+| `product_name` | ◯ | 商品名 | `ウールコート` |
+| `category` | − | カテゴリ(空欄は「未分類」として集計) | `アウター` |
+| `sku` | ◯ | SKU | `LUM-OUT-01` |
+| `quantity` | ◯ | 数量(1以上の整数) | `2` |
+| `revenue` | ◯ | 売上金額(その行の合計=単価×数量、0以上) | `7600` |
+| `cost` | ◯ | 原価(その行の合計、0以上) | `2800` |
+
+### ルール
+
+- **文字コード**:UTF-8(Shopifyの標準出力はUTF-8です)
+- **カラム名**:大文字・小文字、単語間のスペースは区別しません(`Order Date` → `order_date` として扱います)。列の並び順は自由です
+- **日付**:`YYYY-MM-DD`・`YYYY/MM/DD`・`YYYY/M/D` のいずれか。実在しない日付(例:2月30日)はスキップします
+- **数値**:数字のみ(カンマ・通貨記号は不可)
+- **空白**:各項目の前後の空白は自動で取り除きます
+- **空行**:無視します
+
+### スキップされる行
+
+次のいずれかに当てはまる行は取り込まず、画面に行番号と理由を表示します。その他の正常な行は通常どおり取り込みます。
+
+- 必須カラムが空欄
+- 日付の形式が違う、または実在しない日付
+- 数量が1以上の整数でない
+- 売上・原価が0未満、または数値でない
+
+---
+
+## 3. KPIの定義
+
+KPIカードは、データの中で**最も新しい月(対象月)**の数字を表示します。カテゴリ別売上・SKUトップ10は、**データ期間全体**の集計です。
+
+| 指標 | 計算方法 |
+|---|---|
+| 売上 | `revenue` の合計 |
+| 粗利 | 売上 − `cost` の合計 |
+| 粗利率 | 粗利 ÷ 売上 |
+| 前月比(売上・粗利) | 当月 ÷ 前月 − 1(%) |
+| リピート率(月次) | その月に購入した顧客のうち、その月末までに累計2回以上購入している顧客の割合 |
+| リピート率(期間全体) | データ期間内に2回以上購入した顧客 ÷ 全顧客 |
+| 前月差(リピート率) | 当月のリピート率 − 前月のリピート率(ポイント) |
+| SKUトップ10 | 販売数量の多い順 |
+
+※ 購入回数は「CSVの1行=1回」として数えます(「5. 既知の制約」を参照)
+
+---
+
+## 4. 数値の検証結果
+
+同じCSV(`tests/fixtures/sample-sales.csv`、40行)をExcelで集計し、ダッシュボードの表示と**完全に一致**することを確認済みです。
+
+| 確認項目 | Excelでの確認方法 | ダッシュボード | Excel | 結果 |
+|---|---|---|---|---|
+| 行数 | 読み込み行数 | 集計件数 40件 | 40行 | ✅ |
+| 売上合計 | SUM | ¥560,600 | 560,600 | ✅ |
+| 粗利合計 | SUM(売上) − SUM(原価) | ¥349,100 | 560,600 − 211,500 | ✅ |
+| 11月の売上・粗利 | ピボット(月別) | ¥264,700・¥163,100 | 264,700・163,100 | ✅ |
+| 前月比(売上) | 11月 ÷ 10月 − 1 | +79.5% | 0.7946 | ✅ |
+| 前月比(粗利) | 11月 ÷ 10月 − 1 | +76.1% | 0.7613 | ✅ |
+| カテゴリ別売上 | ピボット(カテゴリ別) | アウター ¥287,400 / トップス ¥114,400 / ボトムス ¥82,200 / アクセサリー ¥76,600 | 同じ | ✅ |
+| リピート率(期間全体) | ピボット(顧客別の購入回数) | 28.6% | 8人 ÷ 28人 | ✅ |
+
+---
+
+## 5. 既知の制約と今後の拡張候補
+
+| 項目 | 現状 | 拡張案 |
+|---|---|---|
+| ログイン | なし(URLを知っていれば閲覧・アップロードが可能) | ログイン機能を追加し、社内メンバーのみに制限 |
+| 購入回数の数え方 | CSVの1行=1回。1回の注文で複数商品を買った場合も複数回と数えるため、リピート率が高めに出る可能性がある | CSVに注文IDの列を追加し、注文単位で数える |
+| 文字コード | UTF-8のみ対応 | Shift-JISの自動判定・変換 |
+| AI分析 | ボタンを押したときのみ実行 | CSVアップロード時に自動実行、月次レポートとして保存 |
+
+---
+
+## 6. 技術構成
+
+| 分類 | 使用技術 |
+|---|---|
+| フレームワーク | Next.js 16(App Router)、TypeScript |
+| UI | Tailwind CSS、Recharts |
+| データベース | Supabase(PostgreSQL) |
+| AI | Anthropic Claude API(`claude-sonnet-4-6`) |
+| CSV処理 | PapaParse、Zod |
+| テスト | Vitest(AI分析のSnapshotテスト、CSVパーサーのテスト) |
+| CI/CD | GitHub Actions → Vercel |
+
+### データベース(Supabase)
+
+| テーブル | 内容 |
+|---|---|
+| `uploads` | アップロード履歴(ファイル名・行数・日時) |
+| `sales_data` | 売上明細(1行=CSVの1行) |
+| `reports` | AI分析結果(サマリー・アクション提案) |
+
+- ダッシュボードとAI分析は、同じ関数(`fetchAllSalesData`)で `sales_data` を**1,000件ずつ全件取得**して集計します。画面の数字とAIに渡す数字は必ず一致します
+- 取得件数がDB上の件数より少ない場合は、画面に警告を表示し、AI分析は中止します
+
+---
+
+## 7. 環境変数
+
+| 変数名 | 用途 | 公開範囲 |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Claude APIのキー | サーバーのみ(ブラウザに出さない) |
+| `NEXT_PUBLIC_SUPABASE_URL` | SupabaseプロジェクトのURL | ブラウザにも公開される |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabaseの公開用キー | ブラウザにも公開される |
+| `SUPABASE_SECRET_KEY` | Supabaseのサーバー用キー | サーバーのみ(ブラウザに出さない) |
+
+- **ローカル開発**:プロジェクト直下の `.env.local` に設定(GitHubには上げません)
+- **本番**:Vercelのプロジェクト設定「Environment Variables」に設定
+
+---
+
+## 8. CI/CD(テスト合格 → 自動デプロイ)
+
+| きっかけ | 実行内容 |
+|---|---|
+| プルリクエスト(main宛て) | 型チェック・lint・テストのみ |
+| mainへのpush | 型チェック・lint・テスト → **すべて成功したときだけ**本番デプロイ |
+
+- 設定ファイル:`.github/workflows/ci.yml`
+- Vercel側のmainブランチの自動デプロイは `vercel.json` で停止しています(テストが失敗したコードが本番に出ないようにするため)
+
+### GitHub Secrets
+
+| 名前 | 内容 |
+|---|---|
+| `VERCEL_TOKEN` | Vercelのアクセストークン(Scope:`my-team051`) |
+| `VERCEL_ORG_ID` | VercelのチームID |
+| `VERCEL_PROJECT_ID` | VercelのプロジェクトID |
+
+⚠️ **`VERCEL_TOKEN` の有効期限は 2027年9月24日です。** 期限前に、Vercelの「Account Settings → Tokens」で Scope を `my-team051` にしたトークンを作り直し、GitHubの「Settings → Secrets and variables → Actions」で `VERCEL_TOKEN` を更新してください。期限が切れると、テストは通っても本番デプロイが失敗します。
+
+---
+
+## 9. 開発者向け
+
+### セットアップ
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install --legacy-peer-deps
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` を作成し、「7. 環境変数」の4つを設定してください。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### よく使うコマンド
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev          # 開発サーバー(http://localhost:3000)
+npm run type-check   # 型チェック
+npm run lint         # lint
+npm test             # テスト
+```
 
-## Learn More
+### CSVフォーマットが変わったとき
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Shopifyの出力形式が変わった場合は、`src/lib/csv/parser.ts` の列名変換(`normalizeHeader`)とチェック内容(`SaleRowSchema`)を修正し、`tests/parser-normalize.test.ts` に新しい形式のテストを追加してください。
