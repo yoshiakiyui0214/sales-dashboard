@@ -51,16 +51,19 @@ jobs:
       - name: Smoke test production
         run: |
           BASE_URL="https://sales-dashboard-my-team051.vercel.app"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
           for path in /dashboard /upload; do
             ok=false
             for i in 1 2 3 4 5; do
-              status=$(curl -s -o page.html -w "%{http_code}" "$BASE_URL$path")
+              status=$(curl -s -A "$UA" -D headers.txt -o page.html -w "%{http_code}" "$BASE_URL$path")
               if [ "$status" = "200" ] && grep -q "売上" page.html && ! grep -q "データの取得に失敗" page.html; then
                 echo "OK: $path (status=$status)"
                 ok=true
                 break
               fi
               echo "Retry $i: $path (status=$status)"
+              # 転送先と、判断材料になるヘッダーを表示する
+              grep -iE "^(location|server|x-vercel-[a-z-]+):" headers.txt || true
               sleep 10
             done
             if [ "$ok" != "true" ]; then
